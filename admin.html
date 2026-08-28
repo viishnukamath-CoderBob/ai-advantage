@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Advantage — Admin Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --red: #DA1E28; --blue: #0f62fe;
+    --black: #0a0a0a; --dark: #111; --dark2: #1a1a1a; --dark3: #222;
+    --grey: #2e2e2e; --grey2: #3a3a3a; --grey3: #555;
+    --white: #fff; --muted: rgba(255,255,255,0.45);
+    --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+  html, body { height: 100%; background: var(--black); color: var(--white); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+
+  /* top bar */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--dark2);
+    border-bottom: 1px solid var(--grey2);
+    padding: 0 32px;
+    height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 16px; }
+  .topbar-title { font-size: 13px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; }
+  .topbar-badge {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase;
+    background: var(--red); color: var(--white); padding: 3px 10px;
+  }
+  .topbar-right { display: flex; gap: 10px; }
+
+  /* buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 20px; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    border: none; cursor: pointer; -webkit-appearance: none;
+    transition: opacity 0.15s, transform 0.1s;
+    text-decoration: none;
+  }
+  .btn:active { opacity: 0.8; transform: scale(0.97); }
+  .btn-red   { background: var(--red); color: var(--white); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--grey2); }
+  .btn-ghost:hover { color: var(--white); border-color: var(--grey3); }
+  .btn-blue  { background: var(--blue); color: var(--white); }
+
+  /* layout */
+  .page { padding: 32px; max-width: 1280px; margin: 0 auto; }
+
+  /* stats row */
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat-card {
+    background: var(--dark2); border: 1px solid var(--grey2);
+    padding: 20px 24px;
+  }
+  .stat-label { font-size: 10px; letter-spacing: 0.2em; color: var(--red); font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+  .stat-val   { font-size: 36px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
+  .stat-sub   { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* band breakdown */
+  .bands-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 32px; }
+  .band-card {
+    background: var(--dark3); border: 1px solid var(--grey2);
+    border-top: 3px solid var(--red);
+    padding: 14px 16px;
+  }
+  .band-name  { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+  .band-count { font-size: 28px; font-weight: 900; color: var(--red); line-height: 1; }
+  .band-pct   { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* section heading */
+  .section-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title { font-size: 11px; letter-spacing: 0.2em; font-weight: 700; text-transform: uppercase; color: var(--red); }
+
+  /* table */
+  .table-wrap { overflow-x: auto; border: 1px solid var(--grey2); margin-bottom: 32px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--dark3); border-bottom: 2px solid var(--red); }
+  thead th {
+    padding: 12px 14px; text-align: left;
+    font-size: 10px; letter-spacing: 0.15em; font-weight: 700;
+    text-transform: uppercase; color: var(--muted);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 1px solid var(--grey2); transition: background 0.15s; }
+  tbody tr:hover { background: var(--dark3); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 12px 14px; vertical-align: middle; white-space: nowrap; }
+  .score-chip {
+    display: inline-block; padding: 3px 10px;
+    font-size: 12px; font-weight: 800;
+    border: 1.5px solid var(--red); color: var(--red);
+    min-width: 52px; text-align: center;
+  }
+  .score-chip.hi { background: rgba(218,30,40,0.15); }
+  .band-pill {
+    display: inline-block; padding: 3px 10px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; background: var(--grey2); color: var(--muted);
+  }
+  .dim-bar-wrap { display: flex; align-items: center; gap: 6px; min-width: 120px; }
+  .dim-bar { flex: 1; height: 4px; background: var(--grey); position: relative; overflow: hidden; }
+  .dim-bar-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--red); }
+  .dim-val { font-size: 11px; font-weight: 700; color: var(--muted); width: 28px; text-align: right; flex-shrink: 0; }
+  .email-cell { color: var(--muted); font-size: 12px; }
+  .ts-cell { color: var(--grey3); font-size: 11px; }
+
+  /* empty state */
+  .empty {
+    text-align: center; padding: 80px 32px;
+    background: var(--dark2); border: 1px solid var(--grey2);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 16px; opacity: 0.4; }
+  .empty-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .empty-sub { font-size: 13px; color: var(--muted); }
+
+  /* filter row */
+  .filter-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .filter-input {
+    background: var(--dark3); border: 1px solid var(--grey2);
+    border-bottom: 2px solid var(--red);
+    color: var(--white); font-size: 13px; padding: 9px 14px;
+    font-family: var(--font); outline: none;
+    border-radius: 0; min-width: 220px;
+  }
+  .filter-input::placeholder { color: var(--grey3); }
+  .filter-input:focus { border-bottom-color: var(--white); }
+  .filter-select {
+    background: var(--dark3); border: 1px solid var(--grey2);
+    border-bottom: 2px solid var(--red);
+    color: var(--white); font-size: 13px; padding: 9px 14px;
+    font-family: var(--font); outline: none; cursor: pointer;
+    -webkit-appearance: none; border-radius: 0;
+  }
+
+  /* score distribution bar */
+  .dist-row { margin-bottom: 32px; }
+  .dist-bar-outer { height: 10px; background: var(--dark3); border: 1px solid var(--grey2); position: relative; overflow: hidden; margin-bottom: 4px; }
+  .dist-bar-fill { height: 100%; background: var(--red); transition: width 0.8s cubic-bezier(0.22,1,0.36,1); }
+  .dist-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+  /* delete confirm */
+  #confirmOverlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.75); align-items: center; justify-content: center;
+  }
+  #confirmOverlay.show { display: flex; }
+  .confirm-box {
+    background: var(--dark2); border: 1px solid var(--grey2);
+    border-top: 3px solid var(--red);
+    padding: 32px 36px; max-width: 400px; width: 90%; text-align: center;
+  }
+  .confirm-title { font-size: 16px; font-weight: 800; text-transform: uppercase; margin-bottom: 10px; }
+  .confirm-sub   { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+  .confirm-btns  { display: flex; gap: 10px; justify-content: center; }
+
+  /* back link */
+  .back-link {
+    font-size: 11px; color: var(--muted); text-decoration: none;
+    letter-spacing: 0.1em; font-weight: 700; text-transform: uppercase;
+  }
+  .back-link:hover { color: var(--white); }
+  .red { color: var(--red); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-badge">Admin</span>
+    <span class="topbar-title">AI Advantage — Response Dashboard</span>
+  </div>
+  <div class="topbar-right">
+    <button class="btn btn-ghost" onclick="exportCSV()">⬇ Download CSV</button>
+    <button class="btn btn-ghost" onclick="exportJSON()">⬇ Download JSON</button>
+    <button class="btn btn-ghost" style="color:#DA1E28;border-color:#DA1E28" onclick="showConfirm()">✕ Clear All Data</button>
+    <a class="btn btn-red" href="index.html">← Back to Survey</a>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card">
+      <div class="stat-label">Total Responses</div>
+      <div class="stat-val" id="statTotal">0</div>
+      <div class="stat-sub">all time</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Average Score</div>
+      <div class="stat-val red" id="statAvg">—</div>
+      <div class="stat-sub">out of 100</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Highest Score</div>
+      <div class="stat-val" id="statHigh">—</div>
+      <div class="stat-sub" id="statHighName">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Lowest Score</div>
+      <div class="stat-val" id="statLow">—</div>
+      <div class="stat-sub" id="statLowName">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Race Ready</div>
+      <div class="stat-val" id="statRaceReady">0</div>
+      <div class="stat-sub">scored 80–100</div>
+    </div>
+  </div>
+
+  <!-- Band breakdown -->
+  <div class="section-head"><div class="section-title">Performance Band Breakdown</div></div>
+  <div class="bands-row" id="bandsRow">
+    <div class="band-card"><div class="band-name">The Grid Is Forming</div><div class="band-count" id="b0">0</div><div class="band-pct" id="b0p">0%</div></div>
+    <div class="band-card"><div class="band-name">Building Momentum</div><div class="band-count" id="b1">0</div><div class="band-pct" id="b1p">0%</div></div>
+    <div class="band-card"><div class="band-name">In the Fast Lane</div><div class="band-count" id="b2">0</div><div class="band-pct" id="b2p">0%</div></div>
+    <div class="band-card" style="border-top-color:var(--blue)"><div class="band-name">Race Ready</div><div class="band-count" style="color:var(--blue)" id="b3">0</div><div class="band-pct" id="b3p">0%</div></div>
+  </div>
+
+  <!-- Dimension averages -->
+  <div class="section-head"><div class="section-title">Average Score by Dimension</div></div>
+  <div class="dist-row" id="dimAvgRow"></div>
+
+  <!-- Filter + Table -->
+  <div class="section-head">
+    <div class="section-title">All Responses</div>
+    <div style="font-size:11px;color:var(--muted)" id="showingCount"></div>
+  </div>
+  <div class="filter-row">
+    <input class="filter-input" id="filterSearch" placeholder="Search name, company, email…" oninput="renderTable()">
+    <select class="filter-select" id="filterBand" onchange="renderTable()">
+      <option value="">All Bands</option>
+      <option>The Grid Is Forming</option>
+      <option>Building Momentum</option>
+      <option>In the Fast Lane</option>
+      <option>Race Ready</option>
+    </select>
+    <select class="filter-select" id="filterSort" onchange="renderTable()">
+      <option value="newest">Newest First</option>
+      <option value="oldest">Oldest First</option>
+      <option value="high">Highest Score</option>
+      <option value="low">Lowest Score</option>
+    </select>
+  </div>
+
+  <div class="table-wrap" id="tableWrap">
+    <div class="empty"><div class="empty-icon">🏁</div><div class="empty-title">No responses yet</div><div class="empty-sub">Responses will appear here once participants complete the survey and submit their email.</div></div>
+  </div>
+
+</div>
+
+<!-- Confirm overlay -->
+<div id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Clear All Data?</div>
+    <div class="confirm-sub">This will permanently delete all <span id="confirmCount">0</span> responses from localStorage. This cannot be undone.</div>
+    <div class="confirm-btns">
+      <button class="btn btn-ghost" onclick="hideConfirm()">Cancel</button>
+      <button class="btn btn-red" onclick="clearAll()">Yes, Delete All</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BAND_KEYS = ['The Grid Is Forming', 'Building Momentum', 'In the Fast Lane', 'Race Ready'];
+const DIM_LABELS = ['AI & Workflow', 'Data & Intelligence', 'Trust & Control', 'AI Operating Model'];
+
+function loadData() {
+  try { return JSON.parse(localStorage.getItem('raceResults') || '[]'); }
+  catch(e) { return []; }
+}
+
+function fmt(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+       + ' ' + d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+
+function render() {
+  const data = loadData();
+  const n = data.length;
+
+  // Stats
+  document.getElementById('statTotal').textContent = n;
+  if (n === 0) {
+    ['statAvg','statHigh','statLow'].forEach(id => document.getElementById(id).textContent = '—');
+    document.getElementById('statHighName').textContent = '—';
+    document.getElementById('statLowName').textContent  = '—';
+    document.getElementById('statRaceReady').textContent = '0';
+  } else {
+    const scores = data.map(r => r.score || 0);
+    const avg = Math.round(scores.reduce((a,b)=>a+b,0) / n);
+    const maxR = data.reduce((a,b) => (b.score||0) > (a.score||0) ? b : a);
+    const minR = data.reduce((a,b) => (b.score||0) < (a.score||0) ? b : a);
+    document.getElementById('statAvg').textContent   = avg;
+    document.getElementById('statHigh').textContent  = maxR.score;
+    document.getElementById('statHighName').textContent = maxR.name || '—';
+    document.getElementById('statLow').textContent   = minR.score;
+    document.getElementById('statLowName').textContent  = minR.name || '—';
+    document.getElementById('statRaceReady').textContent = data.filter(r => (r.score||0) >= 80).length;
+  }
+
+  // Bands
+  BAND_KEYS.forEach((b, i) => {
+    const cnt = data.filter(r => r.band === b).length;
+    document.getElementById('b' + i).textContent = cnt;
+    document.getElementById('b' + i + 'p').textContent = n ? Math.round(cnt/n*100)+'%' : '0%';
+  });
+
+  // Dimension averages
+  const dimRow = document.getElementById('dimAvgRow');
+  dimRow.innerHTML = '';
+  DIM_LABELS.forEach((label, di) => {
+    const vals = data
+      .map(r => r.dimensions && r.dimensions[di] ? r.dimensions[di].score : null)
+      .filter(v => v !== null);
+    const avg = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+    dimRow.innerHTML += `
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">${label}</span>
+          <span style="font-size:13px;font-weight:800;color:var(--red)">${avg}</span>
+        </div>
+        <div class="dist-bar-outer"><div class="dist-bar-fill" style="width:${avg}%"></div></div>
+      </div>`;
+  });
+
+  renderTable();
+}
+
+function renderTable() {
+  const data    = loadData();
+  const search  = document.getElementById('filterSearch').value.toLowerCase();
+  const band    = document.getElementById('filterBand').value;
+  const sortBy  = document.getElementById('filterSort').value;
+
+  let filtered = data.filter(r => {
+    const matchSearch = !search ||
+      (r.name||'').toLowerCase().includes(search) ||
+      (r.company||'').toLowerCase().includes(search) ||
+      (r.email||'').toLowerCase().includes(search);
+    const matchBand = !band || r.band === band;
+    return matchSearch && matchBand;
+  });
+
+  if (sortBy === 'oldest') filtered.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+  else if (sortBy === 'high') filtered.sort((a,b) => (b.score||0) - (a.score||0));
+  else if (sortBy === 'low')  filtered.sort((a,b) => (a.score||0) - (b.score||0));
+  else filtered.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)); // newest
+
+  document.getElementById('showingCount').textContent =
+    filtered.length === data.length ? `${data.length} total` : `${filtered.length} of ${data.length}`;
+
+  const wrap = document.getElementById('tableWrap');
+
+  if (data.length === 0) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">🏁</div><div class="empty-title">No responses yet</div><div class="empty-sub">Responses will appear here once participants complete the survey and submit their email.</div></div>';
+    return;
+  }
+  if (filtered.length === 0) {
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No matches</div><div class="empty-sub">Try adjusting your search or filters.</div></div>';
+    return;
+  }
+
+  const rows = filtered.map(r => {
+    const dims = (r.dimensions || []).map(d =>
+      `<td><div class="dim-bar-wrap"><div class="dim-bar"><div class="dim-bar-fill" style="width:${d.score}%"></div></div><div class="dim-val">${d.score}</div></div></td>`
+    ).join('');
+    const hi = (r.score||0) >= 80;
+    return `<tr>
+      <td>${r.name || '—'}</td>
+      <td>${r.company || '—'}</td>
+      <td class="email-cell">${r.email || '—'}</td>
+      <td><span class="score-chip${hi?' hi':''}">${r.score || 0}</span></td>
+      <td><span class="band-pill">${r.band || '—'}</span></td>
+      ${dims}
+      <td style="color:var(--muted);font-size:12px;max-width:200px;white-space:normal">${r.nextPitStop || '—'}</td>
+      <td class="ts-cell">${fmt(r.timestamp)}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table>
+    <thead><tr>
+      <th>Name</th><th>Company</th><th>Email</th>
+      <th>Score</th><th>Band</th>
+      <th>AI &amp; Workflow</th><th>Data &amp; Intelligence</th><th>Trust &amp; Control</th><th>AI Operating Model</th>
+      <th>Next Pit Stop</th><th>Submitted</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+// ===== EXPORT CSV =====
+function exportCSV() {
+  const data = loadData();
+  if (!data.length) { alert('No data to export.'); return; }
+
+  const headers = [
+    'Name','Company','Email','Score','Band',
+    'AI & Workflow','Data & Intelligence','Trust & Control','AI Operating Model',
+    'Pole Position','Next Pit Stop','Recommendation','Timestamp'
+  ];
+
+  const rows = data.map(r => {
+    const dims = (r.dimensions || []).map(d => d.score);
+    while (dims.length < 4) dims.push('');
+    return [
+      r.name, r.company, r.email, r.score, r.band,
+      ...dims,
+      r.polePosition, r.nextPitStop, r.recommendation,
+      r.timestamp
+    ].map(v => `"${String(v||'').replace(/"/g,'""')}"`);
+  });
+
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  download('ai-advantage-responses.csv', 'text/csv;charset=utf-8;', csv);
+}
+
+// ===== EXPORT JSON =====
+function exportJSON() {
+  const data = loadData();
+  if (!data.length) { alert('No data to export.'); return; }
+  download('ai-advantage-responses.json', 'application/json', JSON.stringify(data, null, 2));
+}
+
+function download(filename, type, content) {
+  const blob = new Blob([content], { type });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ===== CLEAR ALL =====
+function showConfirm() {
+  document.getElementById('confirmCount').textContent = loadData().length;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function hideConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('show');
+}
+function clearAll() {
+  localStorage.removeItem('raceResults');
+  hideConfirm();
+  render();
+}
+
+// ===== INIT =====
+render();
+
+// Auto-refresh every 30s in case another tab submits a result
+setInterval(render, 30000);
+</script>
+</body>
+</html>

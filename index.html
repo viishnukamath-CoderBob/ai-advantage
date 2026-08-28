@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>The Race to Enterprise AI Advantage</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ibm-red: #DA1E28;
+    --ibm-red-dark: #a51920;
+    --ibm-red-glow: rgba(218, 30, 40, 0.35);
+    --ibm-blue: #0f62fe;
+    --black: #0a0a0a;
+    --dark: #111111;
+    --dark2: #1a1a1a;
+    --dark3: #222222;
+    --grey: #2e2e2e;
+    --grey2: #3a3a3a;
+    --grey3: #555555;
+    --white: #ffffff;
+    --white-dim: rgba(255,255,255,0.85);
+    --white-muted: rgba(255,255,255,0.45);
+    --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--black);
+    color: var(--white);
+    font-family: var(--font);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* ===== SCREEN SYSTEM ===== */
+  .screen {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateX(80px);
+    transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    z-index: 1;
+  }
+  .screen.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+    z-index: 5;
+  }
+  .screen.exit-forward {
+    opacity: 0;
+    transform: translateX(-80px);
+    pointer-events: none;
+    transition: opacity 0.45s cubic-bezier(0.55,0,1,0.45), transform 0.45s cubic-bezier(0.55,0,1,0.45);
+  }
+  .screen.exit-back {
+    opacity: 0;
+    transform: translateX(80px);
+    pointer-events: none;
+    transition: opacity 0.45s cubic-bezier(0.55,0,1,0.45), transform 0.45s cubic-bezier(0.55,0,1,0.45);
+  }
+  .screen.enter-back {
+    transform: translateX(-80px);
+  }
+
+  /* ===== SCAN LINE OVERLAY (racing console feel) ===== */
+  .scanlines {
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 300;
+    opacity: 0.4;
+  }
+
+  /* ===== CORNER BRACKETS (HUD feel) ===== */
+  .hud-corner {
+    position: fixed;
+    width: 28px; height: 28px;
+    pointer-events: none;
+    z-index: 50;
+  }
+  .hud-corner::before, .hud-corner::after {
+    content: '';
+    position: absolute;
+    background: var(--ibm-red);
+  }
+  .hud-corner::before { width: 100%; height: 2px; top: 0; }
+  .hud-corner::after  { width: 2px; height: 100%; top: 0; }
+  .hud-tl { top: 8px; left: 8px; }
+  .hud-tr { top: 8px; right: 8px; transform: scaleX(-1); }
+  .hud-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
+  .hud-br { bottom: 8px; right: 8px; transform: scale(-1); }
+
+  /* ===== BACKGROUND GRID ===== */
+  .bg-grid {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== MOVING GRID (start screen only) ===== */
+  .bg-grid-move {
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(218,30,40,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(218,30,40,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+    animation: gridMove 4s linear infinite;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .bg-grid-move.visible { opacity: 1; }
+  @keyframes gridMove {
+    from { background-position: 0 0; }
+    to   { background-position: 0 60px; }
+  }
+
+  /* ===== TELEMETRY BAR (top) ===== */
+  .telemetry-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--ibm-red), #ff4444, var(--ibm-red));
+    background-size: 200% 100%;
+    z-index: 100;
+    box-shadow: 0 0 12px var(--ibm-red-glow);
+    animation: telBarSlide 3s linear infinite;
+  }
+  @keyframes telBarSlide {
+    from { background-position: 0 0; }
+    to   { background-position: 200% 0; }
+  }
+
+  /* ===== RACE PROGRESS (bottom) ===== */
+  .race-progress {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--dark3);
+    z-index: 100;
+  }
+  .race-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--ibm-red), #ff6b35);
+    transition: width 0.8s cubic-bezier(0.22,1,0.36,1);
+    box-shadow: 0 0 8px var(--ibm-red-glow);
+  }
+
+  /* ===== HUD STATUS LINE ===== */
+  .hud-status {
+    position: fixed;
+    top: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    color: var(--white-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    z-index: 90;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .hud-status .blink {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ibm-red);
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: blink 1s step-start infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ===== TYPOGRAPHY ===== */
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    color: var(--ibm-red);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .title-xl {
+    font-size: clamp(32px, 5vw, 54px);
+    font-weight: 900;
+    line-height: 1.0;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .title-lg {
+    font-size: clamp(24px, 4vw, 36px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    text-transform: uppercase;
+  }
+  .red { color: var(--ibm-red); }
+  .ibm-mark {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--white-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .divider {
+    width: 48px; height: 2px;
+    background: var(--ibm-red);
+    margin: 20px 0;
+  }
+  .text-center { text-align: center; }
+  .mt-8  { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .mt-24 { margin-top: 24px; }
+  .mb-16 { margin-bottom: 16px; }
+  .mb-24 { margin-bottom: 24px; }
+  .section-divider { width:100%; height:1px; background:var(--grey2); margin:28px 0; }
+
+  /* ===== TELEMETRY FLASH ===== */
+  .telem-flash {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 200; opacity: 0;
+  }
+  .telem-flash.active { animation: telemFlash 0.5s ease-out forwards; }
+  @keyframes telemFlash {
+    0%   { opacity:0; background: radial-gradient(circle at 50% 50%, rgba(218,30,40,0.3), transparent 70%); }
+    20%  { opacity:1; }
+    100% { opacity:0; }
+  }
+
+  /* ===== PAGE WIPE (full-screen transition effect) ===== */
+  .page-wipe {
+    position: fixed; inset: 0;
+    background: var(--ibm-red);
+    z-index: 500;
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+  .page-wipe.run {
+    animation: wipeThrough 0.55s cubic-bezier(0.77,0,0.18,1) forwards;
+  }
+  @keyframes wipeThrough {
+    0%   { transform: translateX(-100%); }
+    45%  { transform: translateX(0%); }
+    55%  { transform: translateX(0%); }
+    100% { transform: translateX(100%); }
+  }
+
+  /* ===== START SCREEN ===== */
+  #screen-start {
+    background: var(--dark);
+    z-index: 10;
+    text-align: center;
+    padding: 60px 32px;
+    justify-content: center;
+  }
+  .start-hero { max-width: 620px; width: 100%; position: relative; }
+
+  /* ===== TELEMETER DISPLAY (replaces RPM + ticker) ===== */
+  .telemeter-wrap {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 1px;
+    margin-bottom: 36px;
+    border: 1px solid var(--grey2);
+    overflow: hidden;
+  }
+  .telem-cell {
+    flex: 1;
+    background: var(--dark3);
+    padding: 14px 12px 10px;
+    text-align: center;
+    position: relative;
+  }
+  .telem-cell + .telem-cell { border-left: 1px solid var(--grey2); }
+  .telem-cell-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--grey3);
+    margin-bottom: 6px;
+  }
+  .telem-cell-val {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    color: var(--ibm-red);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .telem-cell-unit {
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--grey3);
+    margin-top: 4px;
+    font-weight: 600;
+  }
+  .telem-cell-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--grey2);
+    overflow: hidden;
+  }
+  .telem-cell-bar-fill {
+    height: 100%;
+    background: var(--ibm-red);
+    width: 0%;
+    transition: width 0.6s ease-out;
+  }
+
+  /* f1 stripe */
+  .f1-stripe {
+    width: 100%; height: 6px;
+    background: repeating-linear-gradient(90deg, var(--ibm-red) 0, var(--ibm-red) 20px, transparent 20px, transparent 24px);
+    margin-bottom: 32px;
+    animation: stripeScroll 1.5s linear infinite;
+  }
+  @keyframes stripeScroll {
+    from { background-position: 0 0; }
+    to   { background-position: 24px 0; }
+  }
+
+  .pit-stop-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--grey2);
+    padding: 8px 20px;
+    margin-bottom: 24px;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    color: var(--white-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .pit-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--ibm-red);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.3; transform:scale(0.6); }
+  }
+
+  .quote-block {
+    border-left: 2px solid var(--ibm-red);
+    padding: 12px 20px;
+    margin: 20px 0;
+    text-align: left;
+    font-size: 15px;
+    color: var(--white-dim);
+    font-style: italic;
+    line-height: 1.6;
+  }
+
+  /* ===== F1 START BUTTON ===== */
+  .start-btn-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin: 24px 0 20px;
+  }
+  /* Light sequence */
+  .f1-lights {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .f1-light {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--grey2);
+    background: var(--dark3);
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  }
+  .f1-light.lit {
+    background: var(--ibm-red);
+    border-color: var(--ibm-red);
+    box-shadow: 0 0 10px var(--ibm-red-glow), 0 0 20px var(--ibm-red-glow);
+  }
+  .f1-light.go {
+    background: #00c853;
+    border-color: #00c853;
+    box-shadow: 0 0 10px rgba(0,200,83,0.6), 0 0 20px rgba(0,200,83,0.4);
+  }
+
+  .btn-race-start {
+    position: relative;
+    width: 200px; height: 200px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, #3a0a0c, #1a0405);
+    border: 3px solid var(--ibm-red);
+    cursor: pointer;
+    overflow: hidden;
+    -webkit-appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.15s, box-shadow 0.2s;
+    box-shadow:
+      0 0 0 6px rgba(218,30,40,0.12),
+      0 0 0 12px rgba(218,30,40,0.06),
+      inset 0 2px 6px rgba(255,255,255,0.07);
+  }
+  .btn-race-start::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.06), transparent 60%);
+  }
+  .btn-race-start::after {
+    content: '';
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    border: 1px solid rgba(218,30,40,0.2);
+  }
+  .btn-race-start:active {
+    transform: scale(0.93);
+    box-shadow:
+      0 0 0 4px rgba(218,30,40,0.3),
+      0 0 30px var(--ibm-red-glow),
+      inset 0 2px 6px rgba(255,255,255,0.07);
+  }
+  .btn-race-start.igniting {
+    animation: ignite 0.4s ease-out;
+  }
+  @keyframes ignite {
+    0%   { box-shadow: 0 0 0 6px rgba(218,30,40,0.12), 0 0 0 12px rgba(218,30,40,0.06); }
+    40%  { box-shadow: 0 0 0 20px rgba(218,30,40,0.35), 0 0 60px var(--ibm-red-glow); }
+    100% { box-shadow: 0 0 0 6px rgba(218,30,40,0.12), 0 0 0 12px rgba(218,30,40,0.06); }
+  }
+  .btn-race-label {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--white);
+    position: relative;
+    z-index: 1;
+  }
+  .btn-race-arrow {
+    font-size: 26px;
+    color: var(--ibm-red);
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+  }
+  .btn-race-sub {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--white-muted);
+    text-transform: uppercase;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ===== STANDARD BUTTON ===== */
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 40px;
+    background: var(--ibm-red);
+    color: var(--white);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.2s, transform 0.15s;
+    -webkit-appearance: none;
+  }
+  .btn-primary::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.08);
+    transform: translateX(-100%);
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
+  }
+  .btn-primary:active::before { transform: translateX(0); }
+  .btn-primary:active { transform: scale(0.97); }
+  .btn-arrow { font-size: 18px; }
+
+  /* back button */
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--white-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border: 1px solid var(--grey2);
+    cursor: pointer;
+    -webkit-appearance: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-back:active { border-color: var(--ibm-red); color: var(--ibm-red); }
+
+  /* restart button */
+  .restart-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    background: transparent;
+    color: var(--white-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border: 1px solid var(--grey2);
+    cursor: pointer;
+    margin-top: 28px;
+    -webkit-appearance: none;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .restart-btn:active { border-color: var(--ibm-red); color: var(--ibm-red); }
+
+  /* ===== VALIDATION ERROR ===== */
+  .field-error {
+    font-size: 11px;
+    color: var(--ibm-red);
+    letter-spacing: 0.1em;
+    margin-top: 6px;
+    display: none;
+  }
+  .field-error.show { display: block; }
+  .field-input.error { border-bottom-color: var(--ibm-red) !important; animation: shake 0.35s ease-out; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(6px); }
+    60%      { transform: translateX(-4px); }
+    80%      { transform: translateX(4px); }
+  }
+
+  /* ===== DETAILS SCREEN ===== */
+  #screen-details { background: var(--dark); z-index: 9; padding: 60px 40px; }
+  .details-form { max-width: 540px; width: 100%; }
+  .field-group { margin-bottom: 24px; }
+  .field-label {
+    font-size: 11px; letter-spacing: 0.22em; color: var(--ibm-red);
+    font-weight: 700; text-transform: uppercase; margin-bottom: 10px; display: block;
+  }
+  .field-input {
+    width: 100%;
+    background: var(--dark3);
+    border: 1px solid var(--grey2);
+    border-bottom: 2px solid var(--ibm-red);
+    color: var(--white);
+    font-size: 22px;
+    font-weight: 600;
+    padding: 16px 20px;
+    font-family: var(--font);
+    outline: none;
+    transition: border-color 0.2s, background 0.2s;
+    -webkit-appearance: none;
+    border-radius: 0;
+  }
+  .field-input:focus { background: var(--grey); border-bottom-color: var(--white); }
+  .field-input::placeholder { color: var(--grey3); }
+
+  /* ===== QUESTION SCREEN ===== */
+  #screen-question { background: var(--dark); z-index: 8; padding: 80px 40px 60px; justify-content: flex-start; overflow-y: auto; }
+  .question-container { max-width: 760px; width: 100%; }
+
+  .q-nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .pit-stop-num { font-size: 11px; letter-spacing: 0.25em; font-weight: 700; color: var(--ibm-red); text-transform: uppercase; }
+  .pit-stop-track { display: flex; gap: 6px; align-items: center; }
+  .track-dot {
+    width: 8px; height: 8px;
+    border: 1.5px solid var(--grey2);
+    border-radius: 50%;
+    transition: background 0.3s, border-color 0.3s;
+  }
+  .track-dot.done { background: var(--ibm-red); border-color: var(--ibm-red); box-shadow: 0 0 6px var(--ibm-red-glow); }
+  .track-dot.current { border-color: var(--white); animation: dotPulse 1s ease-in-out infinite; }
+  @keyframes dotPulse { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 8px rgba(255,255,255,0.6)} }
+
+  .q-category { font-size: 11px; letter-spacing: 0.22em; color: var(--ibm-red); font-weight: 700; text-transform: uppercase; margin-bottom: 10px; }
+  .q-text { font-size: clamp(20px, 3vw, 28px); font-weight: 700; line-height: 1.25; margin-bottom: 32px; letter-spacing: -0.01em; }
+
+  /* ===== ANSWER CARDS ===== */
+  .answer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) { .answer-grid { grid-template-columns: 1fr; } }
+  /* stagger-in animation */
+  @keyframes cardSlideIn {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .answer-card {
+    opacity: 0;
+    animation: cardSlideIn 0.35s cubic-bezier(0.22,1,0.36,1) both;
+    background: var(--dark3);
+    border: 1.5px solid var(--grey2);
+    padding: 24px 22px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.25s, background 0.25s, transform 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+  .answer-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--ibm-red);
+    transform: scaleY(0);
+    transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+    transform-origin: bottom;
+  }
+  .answer-card::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(218,30,40,0.15), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .answer-card:active { transform: scale(0.98); }
+  .answer-card.selected { border-color: var(--ibm-red); background: rgba(218,30,40,0.08); }
+  .answer-card.selected::before { transform: scaleY(1); }
+  .answer-card.selected::after { opacity: 1; }
+  .answer-card.selected .card-title { color: var(--white); }
+  .card-title { font-size: 16px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--white-dim); margin-bottom: 8px; transition: color 0.2s; }
+  .card-desc  { font-size: 13px; color: var(--white-muted); line-height: 1.5; font-weight: 400; }
+  @keyframes cardFlash {
+    0%   { box-shadow: 0 0 0 0 var(--ibm-red-glow); }
+    40%  { box-shadow: 0 0 30px 8px var(--ibm-red-glow); }
+    100% { box-shadow: 0 0 0 0 rgba(218,30,40,0); }
+  }
+  .answer-card.flash { animation: cardFlash 0.5s ease-out; }
+
+  /* ===== RESULTS SCREEN ===== */
+  #screen-results { background: var(--dark); z-index: 7; padding: 80px 40px 60px; justify-content: flex-start; overflow-y: auto; }
+  .results-container { max-width: 720px; width: 100%; }
+
+  /* Big score display */
+  .score-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 6px;
+    margin: 20px 0 4px;
+  }
+  .score-hero-num {
+    font-size: clamp(80px, 16vw, 120px);
+    font-weight: 900;
+    line-height: 0.85;
+    letter-spacing: -0.04em;
+    color: var(--ibm-red);
+    font-variant-numeric: tabular-nums;
+  }
+  .score-hero-denom {
+    font-size: clamp(20px, 4vw, 28px);
+    font-weight: 700;
+    color: var(--grey3);
+    padding-bottom: 14px;
+  }
+  .score-track {
+    width: 100%;
+    height: 6px;
+    background: var(--dark3);
+    border: 1px solid var(--grey2);
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-track-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--ibm-red), #ff6b35);
+    width: 0%;
+    transition: width 1.6s cubic-bezier(0.22,1,0.36,1);
+    box-shadow: 4px 0 12px var(--ibm-red-glow);
+  }
+
+  .band-badge {
+    display: inline-block; padding: 10px 28px;
+    border: 2px solid var(--ibm-red);
+    font-size: 14px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+    color: var(--ibm-red); margin: 16px 0 32px;
+    position: relative; overflow: hidden;
+  }
+  .band-badge::before {
+    content: ''; position: absolute; inset: 0;
+    background: var(--ibm-red);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 1.2s cubic-bezier(0.22,1,0.36,1);
+    z-index: -1;
+  }
+  .band-badge.fill { color: var(--white); }
+  .band-badge.fill::before { transform: scaleX(1); }
+
+  .heatmap-section { margin: 20px 0; }
+  .heatmap-row { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+  .hm-label { font-size: 11px; letter-spacing: 0.15em; font-weight: 700; text-transform: uppercase; color: var(--white-muted); width: 160px; flex-shrink: 0; }
+  .hm-track { flex: 1; height: 8px; background: var(--dark3); border: 1px solid var(--grey2); position: relative; overflow: hidden; }
+  .hm-fill  { position: absolute; left:0; top:0; bottom:0; background: linear-gradient(90deg,var(--ibm-red),#ff4444); width:0; transition: width 1.2s cubic-bezier(0.22,1,0.36,1); box-shadow: 4px 0 10px var(--ibm-red-glow); }
+  .hm-fill.blue { background: linear-gradient(90deg,var(--ibm-blue),#4da3ff); box-shadow: 4px 0 10px rgba(15,98,254,0.4); }
+  .hm-score { font-size: 14px; font-weight: 700; color: var(--white); width: 36px; text-align: right; flex-shrink: 0; }
+
+  .insight-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 28px 0; }
+  @media (max-width: 600px) { .insight-row { grid-template-columns: 1fr; } }
+  .insight-card { background: var(--dark3); border: 1.5px solid var(--grey2); padding: 24px 20px; position: relative; overflow: hidden; }
+  .insight-card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--ibm-red); }
+  .insight-card.blue::before { background: var(--ibm-blue); }
+  .insight-tag   { font-size: 10px; letter-spacing: 0.22em; font-weight: 700; text-transform: uppercase; color: var(--ibm-red); margin-bottom: 10px; }
+  .insight-card.blue .insight-tag { color: var(--ibm-blue); }
+  .insight-title { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .insight-body  { font-size: 13px; color: var(--white-muted); line-height: 1.55; }
+
+  .flag-reveal {
+    font-size: 48px;
+    animation: flagWave 0.6s cubic-bezier(0.22,1,0.36,1) both;
+    display: block; margin-bottom: 8px;
+  }
+  @keyframes flagWave {
+    from { transform: scale(0) rotate(-30deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+  }
+
+  /* ===== RACE CARD SCREEN ===== */
+  #screen-card { background: var(--dark); z-index: 6; padding: 60px 40px; justify-content: flex-start; overflow-y: auto; }
+  .race-card { max-width: 640px; width: 100%; background: var(--dark2); border: 1px solid var(--grey2); position: relative; overflow: hidden; }
+  .rc-header { background: var(--ibm-red); padding: 24px 32px; position: relative; overflow: hidden; }
+  .rc-header-bg {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(-45deg, transparent, transparent 10px, rgba(0,0,0,0.12) 10px, rgba(0,0,0,0.12) 11px);
+  }
+  .rc-title { font-size: 22px; font-weight: 900; line-height: 1.1; text-transform: uppercase; letter-spacing: -0.01em; position: relative; }
+  .rc-body { padding: 28px 32px; }
+  .rc-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--grey2); }
+  .rc-field-label { font-size: 10px; letter-spacing: 0.22em; color: var(--ibm-red); font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
+  .rc-field-value { font-size: 16px; font-weight: 700; color: var(--white); }
+  .rc-score-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--grey2); }
+  .rc-big-score  { font-size: 56px; font-weight: 900; line-height: 1; color: var(--ibm-red); letter-spacing: -0.03em; }
+  .rc-big-denom  { font-size: 20px; color: var(--grey3); font-weight: 600; }
+  .rc-band { font-size: 14px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--white); border: 1.5px solid var(--ibm-red); padding: 8px 16px; }
+  .rc-heatmap { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--grey2); }
+  .rc-heatmap-title { font-size: 10px; letter-spacing: 0.22em; font-weight: 700; text-transform: uppercase; color: var(--white-muted); margin-bottom: 14px; }
+  .rc-hm-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .rc-hm-label { font-size: 10px; letter-spacing: 0.12em; font-weight: 600; color: var(--white-muted); width: 130px; flex-shrink: 0; text-transform: uppercase; }
+  .rc-hm-bar   { flex: 1; height: 5px; background: var(--grey); position: relative; overflow: hidden; }
+  .rc-hm-fill  { position: absolute; left:0; top:0; bottom:0; background: var(--ibm-red); transition: width 1s cubic-bezier(0.22,1,0.36,1); }
+  .rc-hm-val   { font-size: 11px; font-weight: 700; color: var(--white); width: 28px; text-align: right; flex-shrink: 0; }
+  .rc-insights { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .rc-insight  { background: var(--dark3); padding: 14px; border-top: 2px solid var(--ibm-red); }
+  .rc-insight.blue { border-top-color: var(--ibm-blue); }
+  .rc-i-tag  { font-size: 9px; letter-spacing: 0.2em; color: var(--ibm-red); font-weight: 700; text-transform: uppercase; margin-bottom: 6px; }
+  .rc-insight.blue .rc-i-tag { color: var(--ibm-blue); }
+  .rc-i-title{ font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .rc-i-body { font-size: 11px; color: var(--white-muted); line-height: 1.45; }
+  .rc-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 16px; border-top: 1px solid var(--grey2); }
+  .rc-footer-ibm { font-size: 10px; letter-spacing: 0.2em; color: var(--grey3); font-weight: 700; text-transform: uppercase; }
+  .rc-checkered  { font-size: 20px; }
+
+</style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-grid-move" id="bgGridMove"></div>
+<div class="scanlines"></div>
+<div class="hud-corner hud-tl"></div>
+<div class="hud-corner hud-tr"></div>
+<div class="hud-corner hud-bl"></div>
+<div class="hud-corner hud-br"></div>
+<div class="telemetry-bar"></div>
+<div class="telem-flash" id="telemFlash"></div>
+<div class="page-wipe" id="pageWipe"></div>
+<div class="hud-status" id="hudStatus"><span class="blink"></span><span id="hudStatusText">SYSTEM READY</span></div>
+<div class="race-progress" id="raceProgress" style="display:none">
+  <div class="race-progress-fill" id="raceProgressFill" style="width:0%"></div>
+</div>
+
+<!-- ==================== START SCREEN ==================== -->
+<div class="screen active" id="screen-start">
+  <div class="start-hero">
+
+    <!-- Telemeter display -->
+    <div class="telemeter-wrap">
+      <div class="telem-cell">
+        <div class="telem-cell-label">RPM</div>
+        <div class="telem-cell-val" id="tickerRpm">0</div>
+        <div class="telem-cell-unit">×1000</div>
+        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarRpm"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-cell-label">Speed</div>
+        <div class="telem-cell-val" id="tickerSpeed">0</div>
+        <div class="telem-cell-unit">KM/H</div>
+        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarSpd"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-cell-label">Engine</div>
+        <div class="telem-cell-val" id="tickerTemp">85</div>
+        <div class="telem-cell-unit">°C</div>
+        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarTmp"></div></div>
+      </div>
+      <div class="telem-cell">
+        <div class="telem-cell-label">Gear</div>
+        <div class="telem-cell-val" id="tickerGear">—</div>
+        <div class="telem-cell-unit">SELECTED</div>
+        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarGear" style="background:var(--ibm-blue)"></div></div>
+      </div>
+    </div>
+
+    <div class="f1-stripe"></div>
+    <div class="pit-stop-label"><div class="pit-dot"></div>AI ADVANTAGE TELEMETER</div>
+    <div class="eyebrow" style="letter-spacing:0.18em">Check Your Enterprise</div>
+    <h1 class="title-xl" style="letter-spacing:0.01em">AI Advantage Score</h1>
+    <div class="divider" style="margin-left:auto;margin-right:auto"></div>
+    <div class="quote-block">"How ready is your organisation to turn AI ambition into enterprise performance?"</div>
+
+    <!-- F1 start button with lights -->
+    <div class="start-btn-wrap">
+      <div class="f1-lights" id="f1Lights">
+        <div class="f1-light" id="l1"></div>
+        <div class="f1-light" id="l2"></div>
+        <div class="f1-light" id="l3"></div>
+        <div class="f1-light" id="l4"></div>
+        <div class="f1-light" id="l5"></div>
+      </div>
+      <button class="btn-race-start" id="btnRaceStart" onclick="handleStartPress()">
+        <div class="btn-race-label">Start</div>
+        <div class="btn-race-arrow">→</div>
+        <div class="btn-race-sub">Press to begin</div>
+      </button>
+    </div>
+
+    <div class="mt-8 ibm-mark">Powered by IBM BOB</div>
+  </div>
+</div>
+
+<!-- ==================== DETAILS SCREEN ==================== -->
+<div class="screen" id="screen-details">
+  <div class="details-form">
+    <button class="btn-back mb-16" onclick="goBack('start')">← Back</button>
+    <div class="eyebrow">Before We Begin</div>
+    <h2 class="title-lg mb-16">Your Credentials</h2>
+    <div class="divider"></div>
+    <div class="field-group">
+      <label class="field-label" for="inputName">Your Name</label>
+      <input class="field-input" id="inputName" type="text" placeholder="Enter your name" autocomplete="off" autocorrect="off">
+      <div class="field-error" id="errName">Please enter your name to continue.</div>
+    </div>
+    <div class="field-group">
+      <label class="field-label" for="inputCompany">Company</label>
+      <input class="field-input" id="inputCompany" type="text" placeholder="Enter your company" autocomplete="off" autocorrect="off">
+      <div class="field-error" id="errCompany">Please enter your company to continue.</div>
+    </div>
+    <button class="btn-primary mt-24" onclick="goToQuestion(0)">
+      Accelerate <span class="btn-arrow">→</span>
+    </button>
+  </div>
+</div>
+
+<!-- ==================== QUESTION SCREEN ==================== -->
+<div class="screen" id="screen-question">
+  <div class="question-container">
+    <div class="q-nav-row">
+      <button class="btn-back" id="btnQBack" onclick="goBackFromQuestion()">← Back</button>
+      <div class="pit-stop-num" id="pitStopNum">PIT STOP 01 / 04</div>
+      <div class="pit-stop-track" id="pitStopTrack"></div>
+    </div>
+    <div class="q-category" id="qCategory"></div>
+    <div class="q-text" id="qText"></div>
+    <div class="answer-grid" id="answerGrid"></div>
+  </div>
+</div>
+
+<!-- ==================== RESULTS SCREEN ==================== -->
+<div class="screen" id="screen-results">
+  <div class="results-container">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <button class="btn-back" onclick="goBack('question')">← Back</button>
+      <span></span>
+    </div>
+    <div class="text-center">
+      <span class="flag-reveal" id="flagEmoji" style="display:none">🏁</span>
+      <div class="eyebrow mt-8">Enterprise AI Advantage Score</div>
+      <h2 class="title-lg mt-8">Your Performance</h2>
+    </div>
+    <div class="score-hero">
+      <div class="score-hero-num red" id="scoreDisplay">0</div>
+      <div class="score-hero-denom">/&nbsp;100</div>
+    </div>
+    <div class="score-track"><div class="score-track-fill" id="scoreTrackFill"></div></div>
+    <div class="text-center"><div class="band-badge" id="bandBadge">—</div></div>
+    <div class="section-divider"></div>
+    <div class="eyebrow">AI Advantage Heatmap</div>
+    <div class="heatmap-section" id="heatmapSection" style="margin-top:16px"></div>
+    <div class="section-divider"></div>
+    <div class="insight-row" id="insightRow"></div>
+    <div class="section-divider"></div>
+    <div class="text-center">
+      <button class="btn-primary" onclick="goToCard()">View Your Race Card <span class="btn-arrow">→</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== RACE CARD SCREEN ==================== -->
+<div class="screen" id="screen-card">
+  <div style="max-width:680px;width:100%">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <button class="btn-back" onclick="goBack('results')">← Back</button>
+      <div class="eyebrow" style="margin:0">Your AI Advantage Race Card</div>
+      <span style="width:80px"></span>
+    </div>
+    <div class="race-card" id="raceCard">
+      <div class="rc-header">
+        <div class="rc-header-bg"></div>
+        <div class="rc-title">The Race to<br>Enterprise AI Advantage</div>
+      </div>
+      <div class="rc-body">
+        <div class="rc-name-row">
+          <div>
+            <div class="rc-field-label">Name</div>
+            <div class="rc-field-value" id="rcName">—</div>
+          </div>
+          <div>
+            <div class="rc-field-label">Company</div>
+            <div class="rc-field-value" id="rcCompany">—</div>
+          </div>
+        </div>
+        <div class="rc-score-row">
+          <div>
+            <div class="rc-field-label">AI Advantage Score</div>
+            <div><span class="rc-big-score" id="rcScore">—</span><span class="rc-big-denom"> / 100</span></div>
+          </div>
+          <div class="rc-band" id="rcBand">—</div>
+        </div>
+        <div class="rc-heatmap">
+          <div class="rc-heatmap-title">AI Advantage Heatmap</div>
+          <div id="rcHeatmapRows"></div>
+        </div>
+        <div class="rc-insights" id="rcInsights"></div>
+        <div class="rc-footer">
+          <div class="rc-footer-ibm">Powered by IBM BOB</div>
+          <div class="rc-checkered">🏁</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center">
+      <button class="restart-btn" onclick="restart()">↺ &nbsp; Start New Race</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== DATA =====
+const QUESTIONS = [
+  {
+    category: 'AI & Workflow',
+    text: 'How deeply is AI embedded in your critical workflows today?',
+    answers: [
+      { title: 'Exploring',     desc: 'AI is mainly being tested through isolated pilots.' },
+      { title: 'Proving',       desc: 'AI is delivering value in selected workflows.' },
+      { title: 'Scaling',       desc: 'AI is embedded across multiple priority workflows.' },
+      { title: 'Orchestrating', desc: 'AI, data, applications and people work together across critical workflows.' }
+    ]
+  },
+  {
+    category: 'Data & Intelligence',
+    text: 'How ready is your organisation to turn data into AI-powered decisions?',
+    answers: [
+      { title: 'Fragmented',  desc: 'Data is difficult to access and use consistently.' },
+      { title: 'Connecting',  desc: 'Key data sources are being integrated.' },
+      { title: 'Intelligent', desc: 'Trusted data increasingly powers AI and decisions.' },
+      { title: 'Real-Time',   desc: 'Trusted data continuously powers AI-driven decisions.' }
+    ]
+  },
+  {
+    category: 'Trust & Control',
+    text: 'How prepared are you to scale AI with trust, governance and control?',
+    answers: [
+      { title: 'Defining',     desc: 'AI governance principles are still emerging.' },
+      { title: 'Establishing', desc: 'Governance exists for selected AI initiatives.' },
+      { title: 'Scaling',      desc: 'Governance, security and risk controls are embedded across AI.' },
+      { title: 'Built-In',     desc: 'Trust, security, governance and resilience are built into the AI operating model.' }
+    ]
+  },
+  {
+    category: 'AI Operating Model',
+    text: 'How ready is your organisation to operate AI at enterprise scale?',
+    answers: [
+      { title: 'Experimenting', desc: 'AI ownership and responsibilities are still emerging.' },
+      { title: 'Building',      desc: 'Teams and capabilities are forming around priority AI initiatives.' },
+      { title: 'Scaling',       desc: 'Clear ownership, skills and processes support AI adoption.' },
+      { title: 'Orchestrating', desc: 'People, AI, applications, infrastructure, data and governance operate as one coordinated model.' }
+    ]
+  }
+];
+
+const SCORES = [25, 50, 75, 100];
+const BANDS = [
+  { min: 0,  max: 39,  label: 'The Grid Is Forming' },
+  { min: 40, max: 59,  label: 'Building Momentum' },
+  { min: 60, max: 79,  label: 'In the Fast Lane' },
+  { min: 80, max: 100, label: 'Race Ready' }
+];
+const RECOMMENDATIONS = [
+  'Connect AI to priority workflows and move successful use cases towards scale.',
+  'Strengthen the trusted data foundation required to scale AI.',
+  'Build governance, security and resilience into AI as you scale.',
+  'Align people, AI, technology and decision-making around one coordinated operating model.'
+];
+const POSITIVE_INSIGHTS = [
+  "You're moving at pace — AI is becoming a core workflow driver.",
+  "Your data foundation is giving you a strategic edge.",
+  "Governance and trust are built in — a genuine competitive differentiator.",
+  "Your AI operating model is coordinated and ready for scale."
+];
+const HUD_MESSAGES = ['TELEMETRY ACTIVE','RACE CONTROL ONLINE','AI DIAGNOSTICS READY','PIT LANE OPEN','SYSTEMS GO'];
+
+// ===== STATE =====
+let state = {
+  currentQ: 0,
+  answers: [null, null, null, null],
+  name: '', company: '',
+  currentScreen: 'start'
+};
+
+// ===== START SCREEN ANIMATIONS =====
+(function initStartScreen() {
+  // Moving grid on start screen
+  document.getElementById('bgGridMove').classList.add('visible');
+
+  // Animated telemeter values
+  const gears = ['1','2','3','4','5','6','7','8'];
+  let gi = 0;
+  setInterval(() => {
+    if (state.currentScreen !== 'start') return;
+    const rpm = Math.round(2000 + Math.random() * 6000);
+    const spd = Math.round(60 + Math.random() * 220);
+    const tmp = Math.round(85 + Math.random() * 20);
+    gi = (gi + (Math.random() > 0.7 ? 1 : 0)) % gears.length;
+    document.getElementById('tickerRpm').textContent   = (rpm/1000).toFixed(1);
+    document.getElementById('tickerSpeed').textContent = spd;
+    document.getElementById('tickerTemp').textContent  = tmp;
+    document.getElementById('tickerGear').textContent  = gears[gi];
+    // animate bar fills
+    document.getElementById('tbarRpm').style.width  = ((rpm - 2000) / 6000 * 100) + '%';
+    document.getElementById('tbarSpd').style.width  = (spd / 280 * 100) + '%';
+    document.getElementById('tbarTmp').style.width  = ((tmp - 85) / 20 * 100 + 30) + '%';
+    document.getElementById('tbarGear').style.width = ((gi + 1) / 8 * 100) + '%';
+  }, 700);
+
+  // HUD status cycling
+  let hi = 0;
+  setInterval(() => {
+    hi = (hi + 1) % HUD_MESSAGES.length;
+    document.getElementById('hudStatusText').textContent = HUD_MESSAGES[hi];
+  }, 2500);
+})();
+
+// ===== F1 START LIGHT SEQUENCE =====
+let lightSeqRunning = false;
+function handleStartPress() {
+  if (lightSeqRunning) return;
+  lightSeqRunning = true;
+  const btn = document.getElementById('btnRaceStart');
+  btn.style.pointerEvents = 'none';
+  const lights = [document.getElementById('l1'), document.getElementById('l2'), document.getElementById('l3'), document.getElementById('l4'), document.getElementById('l5')];
+
+  // Light up one by one
+  let i = 0;
+  const litInterval = setInterval(() => {
+    if (i < lights.length) {
+      lights[i].classList.add('lit');
+      i++;
+    } else {
+      clearInterval(litInterval);
+      // Short hold then go green and advance
+      setTimeout(() => {
+        lights.forEach(l => { l.classList.remove('lit'); l.classList.add('go'); });
+        btn.classList.add('igniting');
+        triggerTelemFlash();
+        setTimeout(() => {
+          goToDetails();
+          lightSeqRunning = false;
+          btn.style.pointerEvents = '';
+          // reset lights
+          lights.forEach(l => { l.classList.remove('lit','go'); });
+          btn.classList.remove('igniting');
+        }, 400);
+      }, 500);
+    }
+  }, 200);
+}
+
+// ===== PAGE WIPE TRANSITION =====
+function wipeTransition(cb) {
+  const wipe = document.getElementById('pageWipe');
+  wipe.classList.remove('run');
+  void wipe.offsetWidth;
+  wipe.classList.add('run');
+  // cb at midpoint of wipe (~250ms)
+  setTimeout(cb, 250);
+  setTimeout(() => wipe.classList.remove('run'), 600);
+}
+
+// ===== NAVIGATION =====
+function showScreen(id, direction) {
+  // direction: 'forward' | 'back'
+  const dir = direction || 'forward';
+  const all = document.querySelectorAll('.screen');
+  const next = document.getElementById('screen-' + id);
+
+  all.forEach(s => {
+    if (s.classList.contains('active') && s !== next) {
+      s.classList.remove('active');
+      s.classList.add(dir === 'forward' ? 'exit-forward' : 'exit-back');
+      setTimeout(() => s.classList.remove('exit-forward','exit-back'), 600);
+    }
+  });
+
+  if (dir === 'back') {
+    next.classList.add('enter-back');
+    void next.offsetWidth;
+  }
+
+  requestAnimationFrame(() => {
+    next.classList.remove('enter-back');
+    next.classList.add('active');
+    next.scrollTop = 0;
+  });
+
+  state.currentScreen = id;
+  const progress = document.getElementById('raceProgress');
+  if (id === 'start') {
+    progress.style.display = 'none';
+    document.getElementById('bgGridMove').classList.add('visible');
+  } else {
+    progress.style.display = 'block';
+    document.getElementById('bgGridMove').classList.remove('visible');
+  }
+  updateProgressBar();
+  updateHudStatus(id);
+}
+
+function updateHudStatus(screenId) {
+  const map = { start:'SYSTEM READY', details:'DRIVER REGISTRATION', question:'PIT STOP ACTIVE', results:'RACE COMPLETE', card:'RACE CARD READY' };
+  document.getElementById('hudStatusText').textContent = map[screenId] || 'ONLINE';
+}
+
+function updateProgressBar() {
+  const fill = document.getElementById('raceProgressFill');
+  const screens = ['details', 'question', 'results', 'card'];
+  const idx = screens.indexOf(state.currentScreen);
+  const pct = idx < 0 ? 0 : ((idx + 1) / screens.length) * 100;
+  fill.style.width = pct + '%';
+}
+
+// ===== VALIDATION =====
+function validateDetails() {
+  const name    = document.getElementById('inputName').value.trim();
+  const company = document.getElementById('inputCompany').value.trim();
+  const errName    = document.getElementById('errName');
+  const errCompany = document.getElementById('errCompany');
+  const inpName    = document.getElementById('inputName');
+  const inpCompany = document.getElementById('inputCompany');
+  let valid = true;
+
+  if (!name) {
+    errName.classList.add('show');
+    inpName.classList.add('error');
+    setTimeout(() => inpName.classList.remove('error'), 400);
+    valid = false;
+  } else {
+    errName.classList.remove('show');
+  }
+  if (!company) {
+    errCompany.classList.add('show');
+    inpCompany.classList.add('error');
+    setTimeout(() => inpCompany.classList.remove('error'), 400);
+    valid = false;
+  } else {
+    errCompany.classList.remove('show');
+  }
+  return valid;
+}
+
+// ===== NAVIGATION FUNCTIONS =====
+function goToDetails() {
+  wipeTransition(() => {
+    showScreen('details', 'forward');
+    setTimeout(() => document.getElementById('inputName').focus(), 300);
+  });
+}
+
+function goToQuestion(idx) {
+  if (idx === 0) {
+    // called from details — validate first
+    if (!validateDetails()) return;
+    state.name    = document.getElementById('inputName').value.trim();
+    state.company = document.getElementById('inputCompany').value.trim();
+  }
+  state.currentQ = idx;
+  renderQuestion(idx);
+  wipeTransition(() => showScreen('question', 'forward'));
+}
+
+function goBackFromQuestion() {
+  if (state.currentQ === 0) {
+    wipeTransition(() => showScreen('details', 'back'));
+  } else {
+    state.currentQ--;
+    renderQuestion(state.currentQ);
+    wipeTransition(() => showScreen('question', 'back'));
+  }
+}
+
+function goBack(target) {
+  if (target === 'question') {
+    renderQuestion(state.currentQ);
+    wipeTransition(() => showScreen('question', 'back'));
+  } else {
+    wipeTransition(() => showScreen(target, 'back'));
+  }
+}
+
+// ===== RENDER QUESTION =====
+function renderQuestion(idx) {
+  const q = QUESTIONS[idx];
+  document.getElementById('pitStopNum').textContent = `PIT STOP ${String(idx+1).padStart(2,'0')} / 04`;
+  document.getElementById('qCategory').textContent = q.category;
+  document.getElementById('qText').textContent = q.text;
+
+  const track = document.getElementById('pitStopTrack');
+  track.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('div');
+    d.className = 'track-dot' + (i < idx ? ' done' : i === idx ? ' current' : '');
+    track.appendChild(d);
+  }
+
+  const grid = document.getElementById('answerGrid');
+  grid.innerHTML = '';
+  q.answers.forEach((a, i) => {
+    const card = document.createElement('div');
+    card.className = 'answer-card';
+    if (state.answers[idx] === i) card.classList.add('selected');
+    // No score shown — just title and desc
+    card.innerHTML = `<div class="card-title">${a.title}</div><div class="card-desc">${a.desc}</div>`;
+    // Stagger animation delay: 0, 150, 300, 450ms
+    card.style.animationDelay = (i * 150) + 'ms';
+    card.addEventListener('click', () => selectAnswer(idx, i, card));
+    grid.appendChild(card);
+  });
+}
+
+// ===== SELECT ANSWER =====
+function selectAnswer(qIdx, ansIdx, cardEl) {
+  if (navigator.vibrate) navigator.vibrate(20);
+  state.answers[qIdx] = ansIdx;
+  document.querySelectorAll('.answer-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected', 'flash');
+  cardEl.addEventListener('animationend', () => cardEl.classList.remove('flash'), { once: true });
+  triggerTelemFlash();
+  setTimeout(() => {
+    if (qIdx < 3) {
+      goToQuestion(qIdx + 1);
+    } else {
+      goToResults();
+    }
+  }, 480);
+}
+
+function triggerTelemFlash() {
+  const el = document.getElementById('telemFlash');
+  el.classList.remove('active');
+  void el.offsetWidth;
+  el.classList.add('active');
+  el.addEventListener('animationend', () => el.classList.remove('active'), { once: true });
+}
+
+// ===== RESULTS =====
+function goToResults() {
+  wipeTransition(() => {
+    showScreen('results', 'forward');
+    setTimeout(renderResults, 150);
+  });
+}
+
+function calcScore() {
+  const total = state.answers.reduce((sum, a) => sum + (a !== null ? SCORES[a] : 0), 0);
+  return Math.round(total / 4);
+}
+function getBand(score) {
+  return BANDS.find(b => score >= b.min && score <= b.max) || BANDS[BANDS.length-1];
+}
+
+function renderResults() {
+  const score = calcScore();
+  const dimScores = state.answers.map(a => a !== null ? SCORES[a] : 0);
+  const band = getBand(score);
+
+  const flag = document.getElementById('flagEmoji');
+  flag.style.display = 'block';
+
+  // Auto-save result to localStorage
+  saveResult();
+
+  // Animate big score number + track bar
+  animateNumber('scoreDisplay', 0, score, 1600);
+  setTimeout(() => {
+    const fill = document.getElementById('scoreTrackFill');
+    if (fill) fill.style.width = score + '%';
+  }, 300);
+
+  const badge = document.getElementById('bandBadge');
+  badge.textContent = band.label;
+  setTimeout(() => badge.classList.add('fill'), 1600);
+
+  const hm = document.getElementById('heatmapSection');
+  hm.innerHTML = '';
+  const hmColors = ['red','red','red','blue'];
+  QUESTIONS.forEach((q, i) => {
+    const row = document.createElement('div');
+    row.className = 'heatmap-row';
+    row.innerHTML = `<div class="hm-label">${q.category}</div><div class="hm-track"><div class="hm-fill ${hmColors[i]}" id="hmFill${i}" style="width:0%"></div></div><div class="hm-score" id="hmScore${i}">—</div>`;
+    hm.appendChild(row);
+    setTimeout(() => {
+      document.getElementById(`hmFill${i}`).style.width = dimScores[i] + '%';
+      animateNumber(`hmScore${i}`, 0, dimScores[i], 1000);
+    }, 300 + i * 180);
+  });
+
+  const maxIdx = dimScores.indexOf(Math.max(...dimScores));
+  const minIdx = dimScores.indexOf(Math.min(...dimScores));
+  document.getElementById('insightRow').innerHTML = `
+    <div class="insight-card">
+      <div class="insight-tag">🏆 Your Pole Position</div>
+      <div class="insight-title">${QUESTIONS[maxIdx].category}</div>
+      <div class="insight-body">${POSITIVE_INSIGHTS[maxIdx]}</div>
+    </div>
+    <div class="insight-card blue">
+      <div class="insight-tag" style="color:var(--ibm-blue)">🔧 Your Next Pit Stop</div>
+      <div class="insight-title">${QUESTIONS[minIdx].category}</div>
+      <div class="insight-body">${RECOMMENDATIONS[minIdx]}</div>
+    </div>`;
+}
+
+function animateNumber(id, from, to, duration) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(from + (to - from) * eased);
+    if (t < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ===== RACE CARD =====
+function goToCard() {
+  wipeTransition(() => {
+    showScreen('card', 'forward');
+    setTimeout(renderCard, 150);
+  });
+}
+
+function renderCard() {
+  const score = calcScore();
+  const band  = getBand(score);
+  const dimScores = state.answers.map(a => a !== null ? SCORES[a] : 0);
+  const maxIdx = dimScores.indexOf(Math.max(...dimScores));
+  const minIdx = dimScores.indexOf(Math.min(...dimScores));
+
+  document.getElementById('rcName').textContent    = state.name    || '—';
+  document.getElementById('rcCompany').textContent = state.company || '—';
+  document.getElementById('rcScore').textContent   = score;
+  document.getElementById('rcBand').textContent    = band.label;
+
+  const rows = document.getElementById('rcHeatmapRows');
+  rows.innerHTML = '';
+  QUESTIONS.forEach((q, i) => {
+    const row = document.createElement('div');
+    row.className = 'rc-hm-row';
+    row.innerHTML = `<div class="rc-hm-label">${q.category}</div><div class="rc-hm-bar"><div class="rc-hm-fill" id="rcHmFill${i}" style="width:0%"></div></div><div class="rc-hm-val">${dimScores[i]}</div>`;
+    rows.appendChild(row);
+    setTimeout(() => { document.getElementById(`rcHmFill${i}`).style.width = dimScores[i] + '%'; }, 200 + i * 100);
+  });
+
+  document.getElementById('rcInsights').innerHTML = `
+    <div class="rc-insight">
+      <div class="rc-i-tag">🏆 Pole Position</div>
+      <div class="rc-i-title">${QUESTIONS[maxIdx].category}</div>
+      <div class="rc-i-body">${POSITIVE_INSIGHTS[maxIdx]}</div>
+    </div>
+    <div class="rc-insight blue">
+      <div class="rc-i-tag" style="color:var(--ibm-blue)">🔧 Next Pit Stop</div>
+      <div class="rc-i-title">${QUESTIONS[minIdx].category}</div>
+      <div class="rc-i-body">${RECOMMENDATIONS[minIdx]}</div>
+    </div>`;
+}
+
+// ===== SAVE RESULT (auto, no email needed) =====
+function saveResult() {
+  const score     = calcScore();
+  const band      = getBand(score);
+  const dimScores = state.answers.map(a => a !== null ? SCORES[a] : 0);
+  const maxIdx    = dimScores.indexOf(Math.max(...dimScores));
+  const minIdx    = dimScores.indexOf(Math.min(...dimScores));
+  const payload = {
+    name: state.name,
+    company: state.company,
+    score,
+    band: band.label,
+    dimensions: QUESTIONS.map((q, i) => ({ name: q.category, score: dimScores[i] })),
+    polePosition: QUESTIONS[maxIdx].category,
+    nextPitStop: QUESTIONS[minIdx].category,
+    recommendation: RECOMMENDATIONS[minIdx],
+    timestamp: new Date().toISOString()
+  };
+  try {
+    const existing = JSON.parse(localStorage.getItem('raceResults') || '[]');
+    // Avoid duplicate saves if results screen revisited
+    const isDupe = existing.some(r =>
+      r.name === payload.name && r.company === payload.company && r.timestamp.slice(0,16) === payload.timestamp.slice(0,16)
+    );
+    if (!isDupe) {
+      existing.push(payload);
+      localStorage.setItem('raceResults', JSON.stringify(existing));
+    }
+  } catch(e) {}
+}
+
+// ===== RESTART =====
+function restart() {
+  state = { currentQ: 0, answers: [null,null,null,null], name: '', company: '', currentScreen: 'start' };
+  document.getElementById('inputName').value    = '';
+  document.getElementById('inputCompany').value = '';
+  document.getElementById('errName').classList.remove('show');
+  document.getElementById('errCompany').classList.remove('show');
+  const scoreTrack = document.getElementById('scoreTrackFill');
+  if (scoreTrack) scoreTrack.style.width = '0%';
+  document.getElementById('scoreDisplay').textContent = '0';
+  document.getElementById('bandBadge').classList.remove('fill');
+  document.getElementById('flagEmoji').style.display = 'none';
+  wipeTransition(() => showScreen('start', 'back'));
+}
+
+// ===== ADMIN SHORTCUT (URL ?admin) =====
+if (window.location.search.includes('admin')) {
+  document.addEventListener('DOMContentLoaded', () => {
+    window.location.href = 'admin.html';
+  });
+}
+
+// ===== KEYBOARD =====
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (state.currentScreen === 'start')   handleStartPress();
+    else if (state.currentScreen === 'details') goToQuestion(0);
+  }
+});
+
+// ===== iOS BOUNCE PREVENTION =====
+document.body.addEventListener('touchmove', function(e) {
+  const screen = e.target.closest('.screen');
+  if (screen && screen.scrollHeight > window.innerHeight) return;
+  e.preventDefault();
+}, { passive: false });
+</script>
+</body>
+</html>
