@@ -150,7 +150,7 @@
     height: 3px;
     background: linear-gradient(90deg, var(--ibm-red), #ff4444, var(--ibm-red));
     background-size: 200% 100%;
-    z-index: 100;
+    z-index: 110;
     box-shadow: 0 0 12px var(--ibm-red-glow);
     animation: telBarSlide 3s linear infinite;
   }
@@ -159,44 +159,74 @@
     to   { background-position: 200% 0; }
   }
 
-  /* ===== RACE PROGRESS (bottom) ===== */
+  /* ===== RACE TRACK PROGRESS (bottom) ===== */
   .race-progress {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    height: 4px;
-    background: var(--dark3);
+    height: 56px;
+    background: var(--black);
+    border-top: 1px solid var(--grey2);
     z-index: 100;
+    overflow: hidden;
   }
-  .race-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, var(--ibm-red), #ff6b35);
-    transition: width 0.8s cubic-bezier(0.22,1,0.36,1);
-    box-shadow: 0 0 8px var(--ibm-red-glow);
+  .race-track-svg {
+    width: 100%; height: 100%;
+    display: block;
   }
+  /* exhaust flame behind car */
+  @keyframes flameFlicker {
+    0%,100% { opacity: 0.9; transform: scaleX(1); }
+    50%      { opacity: 0.5; transform: scaleX(0.7); }
+  }
+  .car-flame { animation: flameFlicker 0.12s linear infinite; }
+  /* idle wobble when car is at grid */
+  @keyframes idleWobble {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-1px); }
+  }
+  .f1-car-group { transition: transform 1.1s cubic-bezier(0.34,1.56,0.64,1); }
+  .f1-car-group.idle { animation: idleWobble 1.4s ease-in-out infinite; }
 
-  /* ===== HUD STATUS LINE ===== */
-  .hud-status {
+  /* ===== STATIC RACE TITLE BAR ===== */
+  .race-title-bar {
     position: fixed;
-    top: 12px; left: 50%; transform: translateX(-50%);
+    top: 3px; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 109;
+    pointer-events: none;
+    padding: 5px 0 4px;
+    background: var(--dark2);
+    border-bottom: 1px solid var(--grey2);
+  }
+  .race-title-text {
     font-size: 10px;
-    letter-spacing: 0.25em;
-    color: var(--white-muted);
+    letter-spacing: 0.22em;
+    color: var(--ibm-red);
     font-weight: 700;
     text-transform: uppercase;
-    z-index: 90;
-    pointer-events: none;
     white-space: nowrap;
   }
-  .hud-status .blink {
-    display: inline-block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--ibm-red);
-    margin-right: 8px;
-    vertical-align: middle;
-    animation: blink 1s step-start infinite;
+  /* Waving flag animation */
+  @keyframes flagWaveLeft {
+    0%,100% { transform: rotate(-8deg) scaleX(1); }
+    25%      { transform: rotate(0deg) scaleX(0.92); }
+    50%      { transform: rotate(8deg) scaleX(1); }
+    75%      { transform: rotate(2deg) scaleX(0.96); }
   }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes flagWaveRight {
+    0%,100% { transform: rotate(8deg) scaleX(1); }
+    25%      { transform: rotate(0deg) scaleX(0.92); }
+    50%      { transform: rotate(-8deg) scaleX(1); }
+    75%      { transform: rotate(-2deg) scaleX(0.96); }
+  }
+  /* Wrapper handles the flip direction; inner span handles the wave */
+  .flag-left-wrap  { display: inline-block; transform: scaleX(-1); }
+  .flag-right-wrap { display: inline-block; }
+  .flag-left  { font-size: 16px; display: inline-block; transform-origin: bottom center; animation: flagWaveLeft  1.1s ease-in-out infinite; }
+  .flag-right { font-size: 16px; display: inline-block; transform-origin: bottom center; animation: flagWaveRight 1.1s ease-in-out infinite; }
 
   /* ===== TYPOGRAPHY ===== */
   .eyebrow {
@@ -282,61 +312,6 @@
     justify-content: center;
   }
   .start-hero { max-width: 620px; width: 100%; position: relative; }
-
-  /* ===== TELEMETER DISPLAY (replaces RPM + ticker) ===== */
-  .telemeter-wrap {
-    display: flex;
-    align-items: stretch;
-    justify-content: center;
-    gap: 1px;
-    margin-bottom: 36px;
-    border: 1px solid var(--grey2);
-    overflow: hidden;
-  }
-  .telem-cell {
-    flex: 1;
-    background: var(--dark3);
-    padding: 14px 12px 10px;
-    text-align: center;
-    position: relative;
-  }
-  .telem-cell + .telem-cell { border-left: 1px solid var(--grey2); }
-  .telem-cell-label {
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--grey3);
-    margin-bottom: 6px;
-  }
-  .telem-cell-val {
-    font-size: 22px;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-    color: var(--ibm-red);
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
-  }
-  .telem-cell-unit {
-    font-size: 9px;
-    letter-spacing: 0.15em;
-    color: var(--grey3);
-    margin-top: 4px;
-    font-weight: 600;
-  }
-  .telem-cell-bar {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: var(--grey2);
-    overflow: hidden;
-  }
-  .telem-cell-bar-fill {
-    height: 100%;
-    background: var(--ibm-red);
-    width: 0%;
-    transition: width 0.6s ease-out;
-  }
 
   /* f1 stripe */
   .f1-stripe {
@@ -816,42 +791,98 @@
 <div class="telemetry-bar"></div>
 <div class="telem-flash" id="telemFlash"></div>
 <div class="page-wipe" id="pageWipe"></div>
-<div class="hud-status" id="hudStatus"><span class="blink"></span><span id="hudStatusText">SYSTEM READY</span></div>
+<div class="race-title-bar">
+  <span class="flag-left-wrap"><span class="flag-left">🏁</span></span>
+  <span class="race-title-text">The Race To Enterprise AI Advantage</span>
+  <span class="flag-right-wrap"><span class="flag-right">🏁</span></span>
+</div>
 <div class="race-progress" id="raceProgress" style="display:none">
-  <div class="race-progress-fill" id="raceProgressFill" style="width:0%"></div>
+  <svg class="race-track-svg" id="raceTrackSvg" viewBox="0 0 1000 56" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Track surface -->
+    <rect width="1000" height="56" fill="#0a0a0a"/>
+    <!-- Tarmac strip -->
+    <rect y="18" width="1000" height="20" fill="#1a1a1a"/>
+    <!-- Track edge lines -->
+    <line x1="0" y1="18" x2="1000" y2="18" stroke="#2e2e2e" stroke-width="1"/>
+    <line x1="0" y1="38" x2="1000" y2="38" stroke="#2e2e2e" stroke-width="1"/>
+    <!-- Centre dashed white line -->
+    <line x1="0" y1="28" x2="1000" y2="28" stroke="#333" stroke-width="1" stroke-dasharray="24 16"/>
+    <!-- Start/finish line (left) -->
+    <rect x="28" y="18" width="3" height="20" fill="white" opacity="0.6"/>
+    <!-- Pit stop markers at each question position (20%, 40%, 60%, 80%) -->
+    <rect x="218" y="18" width="2" height="20" fill="#DA1E28" opacity="0.5"/>
+    <rect x="418" y="18" width="2" height="20" fill="#DA1E28" opacity="0.5"/>
+    <rect x="618" y="18" width="2" height="20" fill="#DA1E28" opacity="0.5"/>
+    <rect x="818" y="18" width="2" height="20" fill="#DA1E28" opacity="0.5"/>
+    <!-- Finish line (right) - chequered -->
+    <rect x="968" y="18" width="4" height="5" fill="white"/>
+    <rect x="972" y="18" width="4" height="5" fill="black"/>
+    <rect x="968" y="23" width="4" height="5" fill="black"/>
+    <rect x="972" y="23" width="4" height="5" fill="white"/>
+    <rect x="968" y="28" width="4" height="5" fill="white"/>
+    <rect x="972" y="28" width="4" height="5" fill="black"/>
+    <rect x="968" y="33" width="4" height="5" fill="black"/>
+    <rect x="972" y="33" width="4" height="5" fill="white"/>
+    <!-- Pit stop labels -->
+    <text x="219" y="14" fill="#DA1E28" font-size="7" font-family="Helvetica Neue,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.05em">Q1</text>
+    <text x="419" y="14" fill="#DA1E28" font-size="7" font-family="Helvetica Neue,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.05em">Q2</text>
+    <text x="619" y="14" fill="#DA1E28" font-size="7" font-family="Helvetica Neue,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.05em">Q3</text>
+    <text x="819" y="14" fill="#DA1E28" font-size="7" font-family="Helvetica Neue,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.05em">Q4</text>
+    <text x="970" y="14" fill="white" font-size="7" font-family="Helvetica Neue,sans-serif" font-weight="700" text-anchor="middle" letter-spacing="0.05em">🏁</text>
+    <!-- GRID position label -->
+    <text x="29" y="14" fill="#555" font-size="7" font-family="Helvetica Neue,sans-serif" font-weight="700" letter-spacing="0.05em">GRID</text>
+
+    <!-- F1 Car group — positioned at grid start, moves via JS transform -->
+    <g id="f1CarGroup" class="f1-car-group idle">
+      <!-- Exhaust flame (behind car, origin at car rear) -->
+      <g class="car-flame" transform="translate(-2,0)">
+        <ellipse cx="-6" cy="28" rx="7" ry="2.5" fill="#ff6b35" opacity="0.9"/>
+        <ellipse cx="-9" cy="28" rx="4" ry="1.5" fill="#ffaa00" opacity="0.7"/>
+        <ellipse cx="-4" cy="28" rx="3" ry="1.2" fill="white" opacity="0.5"/>
+      </g>
+      <!-- Car body — Ferrari red F1 silhouette (side view, pointing right) -->
+      <!-- Rear wing -->
+      <rect x="-14" y="21" width="7" height="2" rx="0.5" fill="#DA1E28"/>
+      <rect x="-13" y="19" width="5" height="2" rx="0.5" fill="#DA1E28"/>
+      <!-- Main body -->
+      <path d="M-10,29 L-14,27 L-14,30 L18,30 L22,27 L18,25 L6,24 L0,23 L-6,24 Z" fill="#DA1E28"/>
+      <!-- Cockpit -->
+      <path d="M0,23 L6,22 L10,22.5 L12,24 L6,24 Z" fill="#1a0000"/>
+      <path d="M6,22 L10,21.5 L12,22.5 L10,23 L6,23 Z" fill="rgba(150,200,255,0.3)"/>
+      <!-- Nose cone -->
+      <path d="M18,25 L22,27 L26,27.5 L22,28.5 L18,29 Z" fill="#cc0000"/>
+      <rect x="24" y="27" width="4" height="1" rx="0.3" fill="#cc0000"/>
+      <!-- Front wing -->
+      <path d="M22,28 L26,28.5 L28,29.5 L26,30 L22,30 Z" fill="#DA1E28"/>
+      <rect x="26" y="29" width="6" height="1.5" rx="0.3" fill="#DA1E28"/>
+      <!-- Side pod -->
+      <path d="M-2,27 L10,27 L10,30 L-2,30 Z" fill="#b01020"/>
+      <!-- Yellow accent stripe -->
+      <rect x="-8" y="27" width="18" height="1" fill="#ffcc00" opacity="0.8"/>
+      <!-- Wheels -->
+      <circle cx="-8" cy="30.5" r="3.8" fill="#111"/>
+      <circle cx="-8" cy="30.5" r="2.2" fill="#222"/>
+      <circle cx="-8" cy="30.5" r="0.8" fill="#555"/>
+      <circle cx="16" cy="30.5" r="3.8" fill="#111"/>
+      <circle cx="16" cy="30.5" r="2.2" fill="#222"/>
+      <circle cx="16" cy="30.5" r="0.8" fill="#555"/>
+      <!-- Tyre marks -->
+      <rect x="-11" y="34" width="6" height="1" rx="0.5" fill="#111" opacity="0.5"/>
+      <rect x="13" y="34" width="6" height="1" rx="0.5" fill="#111" opacity="0.5"/>
+      <!-- Number / sponsor text -->
+      <text x="2" y="27.5" fill="white" font-size="4.5" font-family="Helvetica Neue,sans-serif" font-weight="900" text-anchor="middle">16</text>
+    </g>
+
+    <!-- Speed trail (shown when moving) -->
+    <g id="carTrail" opacity="0">
+      <line id="trailLine" x1="0" y1="28" x2="0" y2="28" stroke="#DA1E28" stroke-width="1.5" opacity="0.4"/>
+    </g>
+  </svg>
 </div>
 
 <!-- ==================== START SCREEN ==================== -->
 <div class="screen active" id="screen-start">
   <div class="start-hero">
-
-    <!-- Telemeter display -->
-    <div class="telemeter-wrap">
-      <div class="telem-cell">
-        <div class="telem-cell-label">RPM</div>
-        <div class="telem-cell-val" id="tickerRpm">0</div>
-        <div class="telem-cell-unit">×1000</div>
-        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarRpm"></div></div>
-      </div>
-      <div class="telem-cell">
-        <div class="telem-cell-label">Speed</div>
-        <div class="telem-cell-val" id="tickerSpeed">0</div>
-        <div class="telem-cell-unit">KM/H</div>
-        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarSpd"></div></div>
-      </div>
-      <div class="telem-cell">
-        <div class="telem-cell-label">Engine</div>
-        <div class="telem-cell-val" id="tickerTemp">85</div>
-        <div class="telem-cell-unit">°C</div>
-        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarTmp"></div></div>
-      </div>
-      <div class="telem-cell">
-        <div class="telem-cell-label">Gear</div>
-        <div class="telem-cell-val" id="tickerGear">—</div>
-        <div class="telem-cell-unit">SELECTED</div>
-        <div class="telem-cell-bar"><div class="telem-cell-bar-fill" id="tbarGear" style="background:var(--ibm-blue)"></div></div>
-      </div>
-    </div>
 
     <div class="f1-stripe"></div>
     <div class="pit-stop-label"><div class="pit-dot"></div>POWERED BY IBM BOB</div>
@@ -1058,7 +1089,6 @@ const POSITIVE_INSIGHTS = [
   "Governance and trust are built in — a genuine competitive differentiator.",
   "Your AI operating model is coordinated and ready for scale."
 ];
-const HUD_MESSAGES = ['TELEMETRY ACTIVE','RACE CONTROL ONLINE','AI DIAGNOSTICS READY','PIT LANE OPEN','SYSTEMS GO'];
 
 // ===== STATE =====
 let state = {
@@ -1073,32 +1103,11 @@ let state = {
   // Moving grid on start screen
   document.getElementById('bgGridMove').classList.add('visible');
 
-  // Animated telemeter values
-  const gears = ['1','2','3','4','5','6','7','8'];
-  let gi = 0;
-  setInterval(() => {
-    if (state.currentScreen !== 'start') return;
-    const rpm = Math.round(2000 + Math.random() * 6000);
-    const spd = Math.round(60 + Math.random() * 220);
-    const tmp = Math.round(85 + Math.random() * 20);
-    gi = (gi + (Math.random() > 0.7 ? 1 : 0)) % gears.length;
-    document.getElementById('tickerRpm').textContent   = (rpm/1000).toFixed(1);
-    document.getElementById('tickerSpeed').textContent = spd;
-    document.getElementById('tickerTemp').textContent  = tmp;
-    document.getElementById('tickerGear').textContent  = gears[gi];
-    // animate bar fills
-    document.getElementById('tbarRpm').style.width  = ((rpm - 2000) / 6000 * 100) + '%';
-    document.getElementById('tbarSpd').style.width  = (spd / 280 * 100) + '%';
-    document.getElementById('tbarTmp').style.width  = ((tmp - 85) / 20 * 100 + 30) + '%';
-    document.getElementById('tbarGear').style.width = ((gi + 1) / 8 * 100) + '%';
-  }, 700);
+  // Show race track immediately and place car at grid
+  document.getElementById('raceProgress').style.display = 'block';
+  const car = document.getElementById('f1CarGroup');
+  if (car) { car.setAttribute('data-x', 30); car.classList.add('idle'); }
 
-  // HUD status cycling
-  let hi = 0;
-  setInterval(() => {
-    hi = (hi + 1) % HUD_MESSAGES.length;
-    document.getElementById('hudStatusText').textContent = HUD_MESSAGES[hi];
-  }, 2500);
 })();
 
 // ===== F1 START LIGHT SEQUENCE =====
@@ -1174,29 +1183,51 @@ function showScreen(id, direction) {
   });
 
   state.currentScreen = id;
-  const progress = document.getElementById('raceProgress');
+  // Always show the race track bar
+  document.getElementById('raceProgress').style.display = 'block';
   if (id === 'start') {
-    progress.style.display = 'none';
     document.getElementById('bgGridMove').classList.add('visible');
   } else {
-    progress.style.display = 'block';
     document.getElementById('bgGridMove').classList.remove('visible');
   }
-  updateProgressBar();
-  updateHudStatus(id);
+  updateCarPosition(id, direction);
 }
 
-function updateHudStatus(screenId) {
-  const map = { start:'SYSTEM READY', details:'DRIVER REGISTRATION', question:'PIT STOP ACTIVE', results:'RACE COMPLETE', card:'RACE CARD READY' };
-  document.getElementById('hudStatusText').textContent = map[screenId] || 'ONLINE';
-}
+// Car X positions in SVG viewport (0–1000)
+// Grid=30, details=120, Q1=220, Q2=420, Q3=620, Q4=820, results=920, card=966
+const CAR_X = { start:30, details:120, question_0:220, question_1:420, question_2:620, question_3:820, results:920, card:966 };
 
-function updateProgressBar() {
-  const fill = document.getElementById('raceProgressFill');
-  const screens = ['details', 'question', 'results', 'card'];
-  const idx = screens.indexOf(state.currentScreen);
-  const pct = idx < 0 ? 0 : ((idx + 1) / screens.length) * 100;
-  fill.style.width = pct + '%';
+function updateCarPosition(screenId, direction) {
+  const car = document.getElementById('f1CarGroup');
+  if (!car) return;
+
+  let key = screenId;
+  if (screenId === 'question') key = 'question_' + state.currentQ;
+  const x = CAR_X[key] !== undefined ? CAR_X[key] : 30;
+  const prevX = parseFloat(car.getAttribute('data-x') || 30);
+  car.setAttribute('data-x', x);
+
+  // Idle wobble only at grid
+  if (screenId === 'start') {
+    car.classList.add('idle');
+  } else {
+    car.classList.remove('idle');
+  }
+
+  // Translate car to new X (SVG coords, car origin is at x=30)
+  car.style.transform = `translateX(${x - 30}px)`;
+
+  // Speed trail when moving forward
+  if (x > prevX && direction !== 'back') {
+    const trail = document.getElementById('carTrail');
+    const tl = document.getElementById('trailLine');
+    if (trail && tl) {
+      tl.setAttribute('x1', prevX);
+      tl.setAttribute('x2', x - 5);
+      trail.setAttribute('opacity','1');
+      setTimeout(() => trail.setAttribute('opacity','0'), 900);
+    }
+  }
 }
 
 // ===== VALIDATION =====
@@ -1243,7 +1274,7 @@ function goToQuestion(idx) {
     state.name    = document.getElementById('inputName').value.trim();
     state.company = document.getElementById('inputCompany').value.trim();
   }
-  state.currentQ = idx;
+  state.currentQ = idx;  // set BEFORE showScreen so updateCarPosition reads correct index
   renderQuestion(idx);
   wipeTransition(() => showScreen('question', 'forward'));
 }
@@ -1488,6 +1519,9 @@ function restart() {
   document.getElementById('scoreDisplay').textContent = '0';
   document.getElementById('bandBadge').classList.remove('fill');
   document.getElementById('flagEmoji').style.display = 'none';
+  // Reset car to grid
+  const car = document.getElementById('f1CarGroup');
+  if (car) { car.setAttribute('data-x', 30); car.style.transform = 'translateX(0px)'; car.classList.add('idle'); }
   wipeTransition(() => showScreen('start', 'back'));
 }
 
