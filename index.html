@@ -12,18 +12,19 @@
   :root {
     --ibm-red: #DA1E28;
     --ibm-red-dark: #a51920;
-    --ibm-red-glow: rgba(218, 30, 40, 0.35);
+    --ibm-red-glow: rgba(218, 30, 40, 0.25);
     --ibm-blue: #0f62fe;
-    --black: #0a0a0a;
-    --dark: #111111;
-    --dark2: #1a1a1a;
-    --dark3: #222222;
-    --grey: #2e2e2e;
-    --grey2: #3a3a3a;
-    --grey3: #555555;
-    --white: #ffffff;
-    --white-dim: rgba(255,255,255,0.85);
-    --white-muted: rgba(255,255,255,0.45);
+    /* Lifted from pure black — richer, more premium */
+    --black: #0d0d0d;
+    --dark: #141414;
+    --dark2: #1c1c1c;
+    --dark3: #242424;
+    --grey: #303030;
+    --grey2: #404040;
+    --grey3: #606060;
+    --white: #f4f4f4;
+    --white-dim: rgba(244,244,244,0.88);
+    --white-muted: rgba(244,244,244,0.5);
     --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
 
@@ -76,49 +77,17 @@
     transform: translateX(-80px);
   }
 
-  /* ===== SCAN LINE OVERLAY (racing console feel) ===== */
-  .scanlines {
-    position: fixed;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      transparent,
-      transparent 2px,
-      rgba(0,0,0,0.08) 2px,
-      rgba(0,0,0,0.08) 4px
-    );
-    pointer-events: none;
-    z-index: 300;
-    opacity: 0.4;
-  }
-
-  /* ===== CORNER BRACKETS (HUD feel) ===== */
-  .hud-corner {
-    position: fixed;
-    width: 28px; height: 28px;
-    pointer-events: none;
-    z-index: 50;
-  }
-  .hud-corner::before, .hud-corner::after {
-    content: '';
-    position: absolute;
-    background: var(--ibm-red);
-  }
-  .hud-corner::before { width: 100%; height: 2px; top: 0; }
-  .hud-corner::after  { width: 2px; height: 100%; top: 0; }
-  .hud-tl { top: 8px; left: 8px; }
-  .hud-tr { top: 8px; right: 8px; transform: scaleX(-1); }
-  .hud-bl { bottom: 8px; left: 8px; transform: scaleY(-1); }
-  .hud-br { bottom: 8px; right: 8px; transform: scale(-1); }
+  /* scanlines removed — felt cheap */
+  /* HUD corners removed — felt gaming/phishing */
 
   /* ===== BACKGROUND GRID ===== */
   .bg-grid {
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
-    background-size: 60px 60px;
+      linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+    background-size: 80px 80px;
     pointer-events: none;
     z-index: 0;
   }
@@ -308,10 +277,10 @@
     background: var(--dark);
     z-index: 10;
     text-align: center;
-    padding: 60px 32px;
+    padding: 56px 40px 80px;
     justify-content: center;
   }
-  .start-hero { max-width: 620px; width: 100%; position: relative; }
+  .start-hero { max-width: 540px; width: 100%; position: relative; }
 
   /* f1 stripe */
   .f1-stripe {
@@ -393,79 +362,52 @@
     box-shadow: 0 0 10px rgba(0,200,83,0.6), 0 0 20px rgba(0,200,83,0.4);
   }
 
+  /* Start button — clean IBM-style rectangle, no glow rings */
   .btn-race-start {
     position: relative;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 40% 35%, #3a0a0c, #1a0405);
-    border: 3px solid var(--ibm-red);
+    width: 100%;
+    max-width: 320px;
+    height: 64px;
+    border-radius: 0;
+    background: var(--ibm-red);
+    border: none;
     cursor: pointer;
-    overflow: hidden;
     -webkit-appearance: none;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    transition: transform 0.15s, box-shadow 0.2s;
-    box-shadow:
-      0 0 0 6px rgba(218,30,40,0.12),
-      0 0 0 12px rgba(218,30,40,0.06),
-      inset 0 2px 6px rgba(255,255,255,0.07);
+    gap: 14px;
+    transition: background 0.2s, transform 0.12s;
+    overflow: hidden;
   }
   .btn-race-start::before {
     content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.06), transparent 60%);
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.07);
+    transform: translateX(-100%);
+    transition: transform 0.4s cubic-bezier(0.22,1,0.36,1);
   }
-  .btn-race-start::after {
-    content: '';
-    position: absolute;
-    inset: 6px;
-    border-radius: 50%;
-    border: 1px solid rgba(218,30,40,0.2);
-  }
-  .btn-race-start:active {
-    transform: scale(0.93);
-    box-shadow:
-      0 0 0 4px rgba(218,30,40,0.3),
-      0 0 30px var(--ibm-red-glow),
-      inset 0 2px 6px rgba(255,255,255,0.07);
-  }
-  .btn-race-start.igniting {
-    animation: ignite 0.4s ease-out;
-  }
-  @keyframes ignite {
-    0%   { box-shadow: 0 0 0 6px rgba(218,30,40,0.12), 0 0 0 12px rgba(218,30,40,0.06); }
-    40%  { box-shadow: 0 0 0 20px rgba(218,30,40,0.35), 0 0 60px var(--ibm-red-glow); }
-    100% { box-shadow: 0 0 0 6px rgba(218,30,40,0.12), 0 0 0 12px rgba(218,30,40,0.06); }
-  }
+  .btn-race-start:active::before { transform: translateX(0); }
+  .btn-race-start:active { transform: scale(0.98); }
+  .btn-race-start.igniting { background: #ff2530; }
   .btn-race-label {
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 800;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--white);
     position: relative;
     z-index: 1;
   }
   .btn-race-arrow {
-    font-size: 26px;
-    color: var(--ibm-red);
+    font-size: 20px;
+    color: rgba(255,255,255,0.7);
     position: relative;
     z-index: 1;
     line-height: 1;
   }
-  .btn-race-sub {
-    font-size: 9px;
-    letter-spacing: 0.2em;
-    color: var(--white-muted);
-    text-transform: uppercase;
-    position: relative;
-    z-index: 1;
-  }
+  .btn-race-sub { display: none; }
 
   /* ===== STANDARD BUTTON ===== */
   .btn-primary {
@@ -784,11 +726,6 @@
 
 <div class="bg-grid"></div>
 <div class="bg-grid-move" id="bgGridMove"></div>
-<div class="scanlines"></div>
-<div class="hud-corner hud-tl"></div>
-<div class="hud-corner hud-tr"></div>
-<div class="hud-corner hud-bl"></div>
-<div class="hud-corner hud-br"></div>
 <div class="telemetry-bar"></div>
 <div class="telem-flash" id="telemFlash"></div>
 <div class="page-wipe" id="pageWipe"></div>
